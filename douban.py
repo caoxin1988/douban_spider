@@ -4,6 +4,8 @@ import json
 import re
 import sys
 import csv
+import time
+import random
 
 from FilmId import FilmId
 import common
@@ -35,8 +37,6 @@ def get_comment_page(film_id):
     }
 
     response = requests.get(url=url, params=params, headers=common.HEADERS)
-    with open('test.txt', 'w', encoding='utf-8') as f:
-        f.write(response.text)
 
     doc = pq(response.text)
     html = doc('.article #comments-section #hot-comments a')
@@ -84,7 +84,11 @@ def get_comments(film_id, param, csv_writer):
 
     film_id += '/'
     url = common.URL_MAIN + common.DOUBAN_SUBJECT + film_id + common.DOUBAN_COMMENTS
-    response = requests.get(url=url, params=param, headers=common.HEADERS)
+    response = requests.get(url=url, params=param, headers=common.HEADERS, cookies = common.COOKIES)
+
+    if response.status_code != 200:
+        print(response.text)
+        return False
 
     doc = None
     if 'start' in param:
@@ -98,21 +102,33 @@ def get_comments(film_id, param, csv_writer):
 
     get_comment_content(doc, csv_writer)
 
+    return True
+
 def main():
+
     file_id, param, comment_count = get_comment_page(FilmId.PADMAN.value)
+
+    print('there are %s comments', comment_count)
 
     with open(common.RESULT_FILE, 'w', encoding='utf-8') as f:
         csv_writer = csv.writer(f)
 
+        res = False
         for i in range(int(comment_count) // 20 + 1):
-            print(i)
             if i == 0:
-                get_comments(file_id, param, csv_writer)
+                res = get_comments(file_id, param, csv_writer)
             else:
                 param['start'] = str(i * 20)
                 param['limit'] = '20'
                 param['comments_only'] = '1'
-                get_comments(file_id, param, csv_writer)
+                res = get_comments(file_id, param, csv_writer)
+
+            if res:
+                print('get page {num} successfully'.format(num = i))
+            else:
+                print('get page {num} failed'.format(num = i))
+
+            time.sleep(round(random.uniform(1, 3), 2))
 
 if __name__ == '__main__':
     main()
