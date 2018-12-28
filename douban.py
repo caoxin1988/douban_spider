@@ -92,7 +92,7 @@ def get_comments(film_id, param, csv_writer):
 
     doc = None
     if 'start' in param:
-        html = json.loads(response.text)['html']
+        html = response.json()['html']
         doc = pq(html)
     else:
         doc = pq(response.content)
